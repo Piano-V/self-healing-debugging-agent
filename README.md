@@ -1,11 +1,10 @@
 # Autonomous Self-Healing Code Debugging Agent
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://self-healing-debugging-agent-v1.streamlit.app/)
+
 An execution-guided, stateful multi-agent system built with **LangGraph**, **Pydantic v2**, and **pytest** that programmatically detects, reasons about, and corrects Python code bugs using real-time execution feedback.
 
----
-
-## Short Repository Description (Copy-paste this into GitHub Description box)
-> A stateful multi-agent system built with LangGraph, Pydantic v2, and pytest that programmatically repairs Python code bugs by executing tests in a sandbox and using real-time error trace feedback.
+🚀 **Live Demo:** [self-healing-debugging-agent-v1.streamlit.app](https://self-healing-debugging-agent-v1.streamlit.app/)
 
 ---
 
@@ -54,8 +53,8 @@ graph TD
 ### 1. Installation
 Clone the repository and install dependencies inside a virtual environment:
 ```bash
-git clone <your-repository-url>
-cd self-healing-code-review-and-debugging-agent
+git clone https://github.com/Piano-V/self-healing-debugging-agent.git
+cd self-healing-debugging-agent
 
 python3 -m venv venv
 source venv/bin/activate
