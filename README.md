@@ -4,7 +4,7 @@
 
 An execution-guided, stateful multi-agent system built with **LangGraph**, **Pydantic v2**, and **pytest** that programmatically detects, reasons about, and corrects Python code bugs using real-time execution feedback.
 
-🚀 **Live Demo:** [self-healing-debugging-agent-v1.streamlit.app](https://self-healing-debugging-agent-v1.streamlit.app/)
+**Live Demo:** [self-healing-debugging-agent-v1.streamlit.app](https://self-healing-debugging-agent-v1.streamlit.app/)
 
 ---
 
