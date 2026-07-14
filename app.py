@@ -22,17 +22,24 @@ api_provider = st.sidebar.selectbox(
 
 # Configure environment variables dynamically based on user inputs
 if api_provider == "Google Gemini":
+    has_env_key = bool(os.environ.get("GEMINI_API_KEY"))
+    placeholder_text = "API Key loaded from secrets" if has_env_key else "Enter Gemini API Key..."
     gemini_key = st.sidebar.text_input(
         "Gemini API Key",
         type="password",
-        value=os.environ.get("GEMINI_API_KEY", ""),
+        placeholder=placeholder_text,
+        help="If configured in deployment secrets, you can leave this field empty."
     )
     gemini_model = st.sidebar.text_input(
         "Gemini Model", value=os.environ.get("GEMINI_MODEL", "gemini-3.5-flash")
     )
-    os.environ["GEMINI_API_KEY"] = gemini_key
+    
+    # Only override if the user entered a custom key
+    if gemini_key:
+        os.environ["GEMINI_API_KEY"] = gemini_key
     os.environ["GEMINI_MODEL"] = gemini_model
     os.environ["USE_LOCAL_FALLBACK"] = ""
+
 elif api_provider == "Local Model (Ollama)":
     local_model = st.sidebar.text_input(
         "Ollama Model Name",
@@ -40,16 +47,23 @@ elif api_provider == "Local Model (Ollama)":
     )
     os.environ["USE_LOCAL_FALLBACK"] = "true"
     os.environ["LOCAL_MODEL"] = local_model
+
 elif api_provider == "OpenAI":
+    has_env_key = bool(os.environ.get("OPENAI_API_KEY"))
+    placeholder_text = "API Key loaded from secrets" if has_env_key else "Enter OpenAI API Key..."
     openai_key = st.sidebar.text_input(
         "OpenAI API Key",
         type="password",
-        value=os.environ.get("OPENAI_API_KEY", ""),
+        placeholder=placeholder_text,
+        help="If configured in deployment secrets, you can leave this field empty."
     )
     openai_model = st.sidebar.text_input(
         "OpenAI Model", value=os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
     )
-    os.environ["OPENAI_API_KEY"] = openai_key
+    
+    # Only override if the user entered a custom key
+    if openai_key:
+        os.environ["OPENAI_API_KEY"] = openai_key
     os.environ["OPENAI_MODEL"] = openai_model
     os.environ["USE_LOCAL_FALLBACK"] = ""
 
