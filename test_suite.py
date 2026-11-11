@@ -1,5 +1,5 @@
 from target_code import merge_intervals
-// Write your test cases here
+# Write your test cases here
 
 def test_empty_intervals():
     assert merge_intervals([]) == []
