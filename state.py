@@ -2,7 +2,7 @@ from typing import TypedDict
 from pydantic import BaseModel, Field
 
 
-class AgentState(TypedDict):
+class AgentState(TypedDict, total=False):
     """State definition for the autonomous code-debugging LangGraph.
 
     Tracks code content, test suite, test results, loop counts, and overall status.
@@ -18,7 +18,25 @@ class AgentState(TypedDict):
     """The stdout/stderr logs from the latest pytest run, including traceback."""
 
     iteration_count: int
-    """The count of debugging cycles completed (maximum is 3)."""
+    """The count of debugging cycles completed."""
+
+    max_iterations: int
+    """The maximum upper bound of debugging attempts allowed."""
+
+    passed_count: int
+    """Number of passing unit tests in the latest test run."""
+
+    failed_count: int
+    """Number of failing unit tests / errors in the latest test run."""
+
+    previous_code: str
+    """The code content from the preceding iteration to detect stagnant code generation."""
+
+    error_signature: str
+    """Normalized summary signature of the latest test failures."""
+
+    previous_error_signature: str
+    """Normalized summary signature of the failures from the preceding iteration."""
 
     status: str
     """Status indicating the workflow state (e.g., 'success', 'failed', 'max_iterations_reached')."""

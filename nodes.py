@@ -1,7 +1,39 @@
 import os
+import re
 from langchain_core.prompts import ChatPromptTemplate
 from state import AgentState, CodePatch
 from tools import run_pytest
+
+
+def parse_test_results(logs: str) -> tuple[int, int, str]:
+    """Parses pytest execution logs to extract test counts and error signatures.
+
+    Returns:
+        (passed_count, failed_count, normalized_error_signature)
+    """
+    passed_match = re.search(r"(\d+)\s+passed", logs)
+    failed_match = re.search(r"(\d+)\s+failed", logs)
+    error_match = re.search(r"(\d+)\s+error", logs)
+
+    passed_count = int(passed_match.group(1)) if passed_match else 0
+    failed_count = int(failed_match.group(1)) if failed_match else 0
+    if error_match:
+        failed_count += int(error_match.group(1))
+
+    # Extract the concise failure summary section from pytest
+    summary_match = re.search(
+        r"=+ short test summary info =+\n(.*?)\n=+", logs, re.DOTALL
+    )
+    if summary_match:
+        signature = summary_match.group(1).strip()
+    else:
+        # Fallback: grab trailing lines from logs
+        lines = [line.strip() for line in logs.strip().splitlines() if line.strip()]
+        signature = "\n".join(lines[-6:]) if lines else ""
+
+    # Normalize temporary directory paths (e.g. /tmp/tmpfo4zp23e/ -> /tmp/.../)
+    signature = re.sub(r"/tmp/tmp[a-zA-Z0-9_]+", "/tmp/...", signature)
+    return passed_count, failed_count, signature
 
 
 def get_llm():
@@ -74,20 +106,29 @@ def get_llm():
 def test_runner_node(state: AgentState) -> dict:
     """Executes pytest against the current code content.
 
-    Updates the state with the pytest traceback and the current success/failed status.
+    Updates the state with the pytest traceback, test counts, and error signatures.
     """
     print("\n[Node: test_runner_node] Executing unit tests...")
 
     # Run tests using the tool
     passed, logs = run_pytest(state["code_content"], state["test_suite_code"])
 
-    # Determine status
+    # Determine status and extract test metrics
     status = "success" if passed else "failed"
-    print(f"[Node: test_runner_node] Test Result: {status.upper()}")
+    passed_count, failed_count, signature = parse_test_results(logs)
+
+    print(
+        f"[Node: test_runner_node] Test Result: {status.upper()} "
+        f"({passed_count} passed, {failed_count} failed/errors)"
+    )
 
     return {
         "test_logs": logs,
         "status": status,
+        "passed_count": passed_count,
+        "failed_count": failed_count,
+        "previous_error_signature": state.get("error_signature", ""),
+        "error_signature": signature,
     }
 
 
@@ -112,6 +153,7 @@ def programmer_agent_node(state: AgentState) -> dict:
     Enforces Pydantic structured output typing to receive only the patch and reasoning.
     """
     current_iteration = state["iteration_count"]
+    previous_code = state.get("code_content", "")
     print(
         f"\n[Node: programmer_agent_node] Starting debugging iteration {current_iteration + 1}..."
     )
@@ -169,6 +211,7 @@ def programmer_agent_node(state: AgentState) -> dict:
         # Return updated code and increment iteration count
         return {
             "code_content": cleaned_code,
+            "previous_code": previous_code,
             "iteration_count": current_iteration + 1,
         }
 
@@ -182,5 +225,6 @@ def programmer_agent_node(state: AgentState) -> dict:
                 state["test_logs"]
                 + f"\n\n[Agent Error in Iteration {current_iteration + 1}]: {error_msg}"
             ),
+            "previous_code": previous_code,
             "iteration_count": current_iteration + 1,
         }

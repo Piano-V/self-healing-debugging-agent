@@ -5,26 +5,53 @@ from state import AgentState
 
 
 def route_after_test_run(state: AgentState) -> str:
-    """Routing function that acts as the loop guardrail.
+    """Adaptive routing function that acts as a dynamic guardrail.
 
-    Determines whether to continue debugging, end on success, or end to prevent
-    infinite loops when limits are reached.
+    Determines whether to continue debugging, end on success, or end early
+    based on stagnation detection (repeating code or unchanged test errors)
+    and iteration limits.
     """
-    current_status = state["status"]
-    iterations = state["iteration_count"]
+    current_status = state.get("status")
+    iterations = state.get("iteration_count", 0)
+    max_limit = state.get("max_iterations") or int(os.environ.get("MAX_DEBUG_ITERATIONS", 5))
 
+    # 1. Success condition: All unit tests passed
     if current_status == "success":
         print("\n[Router] >>> SUCCESS: All unit tests passed! Routing to END.")
         return END
 
-    if iterations >= 3:
+    # 2. Hard iteration limit ceiling
+    if iterations >= max_limit:
         print(
-            f"\n[Router] >>> TERMINATED: Reached iteration limit ({iterations}/3) with failing tests. Routing to END."
+            f"\n[Router] >>> TERMINATED: Reached safety iteration limit ({iterations}/{max_limit}) with failing tests. Routing to END."
         )
         return END
 
+    # 3. Adaptive Stagnation Detection (Active after at least 1 programmer iteration)
+    if iterations > 0:
+        current_code = state.get("code_content", "").strip()
+        prev_code = state.get("previous_code", "").strip()
+        curr_sig = state.get("error_signature", "").strip()
+        prev_sig = state.get("previous_error_signature", "").strip()
+
+        # Check if the programmer generated identical code without changes
+        if prev_code and current_code == prev_code:
+            print(
+                f"\n[Router] >>> STAGNATION DETECTED: Programmer agent returned identical code without changes at iteration {iterations}. Routing to END."
+            )
+            return END
+
+        # Check if test failures are completely identical across iterations
+        if prev_sig and curr_sig and curr_sig == prev_sig:
+            print(
+                f"\n[Router] >>> STAGNATION DETECTED: Test failure signature did not improve at iteration {iterations}. Repeating the same error. Routing to END."
+            )
+            return END
+
+    passed_count = state.get("passed_count", 0)
+    failed_count = state.get("failed_count", 0)
     print(
-        f"\n[Router] >>> FAILED: Tests failed at iteration {iterations}. Routing to programmer_agent_node."
+        f"\n[Router] >>> IN PROGRESS: Tests failing ({passed_count} passed, {failed_count} failed) at iteration {iterations}/{max_limit}. Routing to programmer_agent."
     )
     return "programmer_agent"
 
@@ -140,6 +167,12 @@ def test_fibonacci_values():
         "test_suite_code": test_suite_code,
         "test_logs": "",
         "iteration_count": 0,
+        "max_iterations": int(os.environ.get("MAX_DEBUG_ITERATIONS", 5)),
+        "passed_count": 0,
+        "failed_count": 0,
+        "previous_code": "",
+        "error_signature": "",
+        "previous_error_signature": "",
         "status": "pending",
     }
 
