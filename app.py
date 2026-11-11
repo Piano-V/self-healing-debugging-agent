@@ -67,6 +67,15 @@ elif api_provider == "OpenAI":
     os.environ["OPENAI_MODEL"] = openai_model
     os.environ["USE_LOCAL_FALLBACK"] = ""
 
+# Guardrail Configuration
+max_iterations = st.sidebar.slider(
+    "Max Iteration Budget",
+    min_value=1,
+    max_value=10,
+    value=5,
+    help="Maximum debugging attempts before halting to avoid infinite loops and token waste.",
+)
+
 # Demo setup buttons
 st.sidebar.markdown("---")
 st.sidebar.subheader("Demo Presets")
@@ -164,6 +173,12 @@ if st.button("Start Self-Healing Loop", use_container_width=True):
             "test_suite_code": test_input,
             "test_logs": "",
             "iteration_count": 0,
+            "max_iterations": max_iterations,
+            "passed_count": 0,
+            "failed_count": 0,
+            "previous_code": "",
+            "error_signature": "",
+            "previous_error_signature": "",
             "status": "pending",
         }
 
@@ -177,7 +192,7 @@ if st.button("Start Self-Healing Loop", use_container_width=True):
                         if "status" in output:
                             status_box.write(f"- Test runner status: `{output['status'].upper()}`")
                         if "iteration_count" in output:
-                            status_box.write(f"- Completed iteration: `{output['iteration_count']}/3`")
+                            status_box.write(f"- Completed iteration: `{output['iteration_count']}/{max_iterations}`")
                 
                 # Fetch final state
                 final_state = graph.invoke(initial_state)
@@ -203,11 +218,11 @@ if st.button("Start Self-Healing Loop", use_container_width=True):
                     st.success("The agent successfully compiled and fixed all tests.")
                 else:
                     st.metric(label="Workflow Status", value="FAILED")
-                    st.error("The agent reached the execution limit without passing all tests.")
+                    st.error("The agent reached the execution limit or stagnated without passing all tests.")
 
                 st.metric(
                     label="Total Debugging Attempts",
-                    value=f"{final_state.get('iteration_count')} / 3",
+                    value=f"{final_state.get('iteration_count')} / {max_iterations}",
                 )
 
         except Exception as e:

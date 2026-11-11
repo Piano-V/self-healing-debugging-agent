@@ -15,12 +15,14 @@ The agent runs as a cyclic StateGraph with explicit state management and executi
 ```mermaid
 graph TD
     START([START]) --> test_runner[test_runner_node]
-    test_runner --> check_results{Route Guardrail}
+    test_runner --> check_results{Adaptive Guardrail}
     
-    check_results -- "Tests Pass (Success) OR Iteration >= 3" --> END([END])
-    check_results -- "Tests Fail AND Iteration < 3" --> programmer[programmer_agent_node]
+    check_results -- "Tests Pass (Success)" --> END([END])
+    check_results -- "Iteration Limit Reached (Ceiling)" --> END
+    check_results -- "Stagnation Detected (Unchanged Error/Code)" --> END
+    check_results -- "Tests Fail (Active Budget)" --> programmer[programmer_agent_node]
     
-    programmer --> update_state[Sanitize Code & Increment Iteration]
+    programmer --> update_state[Sanitize Code & Track Iteration]
     update_state --> test_runner
 ```
 
@@ -31,7 +33,7 @@ graph TD
 *   **Compiler-in-the-Loop Validation**: Executes unit tests in an isolated temporary directory sandbox using Python's `subprocess` engine to capture stdout, stderr, and raw trackbacks.
 *   **Structured Output Typing**: Enforces JSON-structured responses from LLMs via **Pydantic v2 validation** (`.with_structured_output`), ensuring clean patches and logic rationales are parsed reliably.
 *   **Hybrid Cloud-Edge Architecture**: Features a dynamic socket connection check that falls back to a local, fine-tuned code model running offline (**Qwen2.5-Coder via Ollama**) if external Cloud APIs (Google Gemini, OpenAI) are unavailable or restricted by data privacy policies.
-*   **Billing & Execution Guardrails**: Utilizes state persistence (`AgentState`) to prevent infinite looping, terminating execution once tests pass or a maximum iteration threshold (3 attempts) is reached.
+*   **Adaptive Billing & Execution Guardrails**: Utilizes dynamic loop guardrails with state persistence (`AgentState`). The system halts on success, when the configurable iteration budget is reached, or early upon detecting **stagnation** (identical code generation or repeating test error signatures), preventing runaway token expenditure and infinite loops.
 *   **Interactive Streamlit Dashboard**: Provides a clean, professional web interface to run presets, paste custom code, select LLM providers, and view real-time node execution steps.
 
 ---
